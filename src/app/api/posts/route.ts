@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuid } from "uuid";
+import { stripHtml, isValidStatus, isValidPlatform, isValidCategory } from "@/lib/validation";
 
 async function uploadFile(file: File): Promise<{ url: string; type: "image" | "video" }> {
   const ext = file.name.split(".").pop()?.toLowerCase() || "png";
@@ -44,18 +45,28 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || (session.user as { role: string }).role !== "admin") {
+  if (!session || session.user?.email !== "maciek@youmee.pl") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const formData = await req.formData();
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const hashtags = formData.get("hashtags") as string;
+  const title = stripHtml(formData.get("title") as string);
+  const description = stripHtml(formData.get("description") as string);
+  const hashtags = stripHtml(formData.get("hashtags") as string);
   const status = (formData.get("status") as string) || "draft";
   const date = formData.get("date") as string;
   const platform = (formData.get("platform") as string) || "instagram";
   const category = (formData.get("category") as string) || "post";
+
+  if (!isValidStatus(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+  if (!isValidPlatform(platform)) {
+    return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+  }
+  if (!isValidCategory(category)) {
+    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+  }
 
   // Handle multiple files
   const files = formData.getAll("files") as File[];

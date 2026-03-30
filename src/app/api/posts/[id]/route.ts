@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuid } from "uuid";
+import { stripHtml, isValidStatus, isValidPlatform, isValidCategory } from "@/lib/validation";
+
+const CREATOR_EMAIL = "maciek@youmee.pl";
+const OWNER_EMAIL = "admin@youmee.pl";
 
 async function uploadFile(file: File): Promise<{ url: string; type: "image" | "video" }> {
   const ext = file.name.split(".").pop()?.toLowerCase() || "png";
@@ -33,45 +37,83 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || (session.user as { role: string }).role !== "admin") {
+  const email = session?.user?.email;
+
+  if (!session || (email !== CREATOR_EMAIL && email !== OWNER_EMAIL)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
   const formData = await req.formData();
-  const title = formData.get("title") as string;
-  const description = formData.get("description") as string;
-  const hashtags = formData.get("hashtags") as string;
-  const status = formData.get("status") as string;
-  const date = formData.get("date") as string;
-  const platform = formData.get("platform") as string;
-  const category = formData.get("category") as string;
 
   const updateData: Record<string, unknown> = {};
-  if (title !== null) updateData.title = title;
-  if (description !== null) updateData.description = description;
-  if (hashtags !== null) updateData.hashtags = hashtags;
-  if (status !== null) updateData.status = status;
-  if (platform !== null) updateData.platform = platform;
-  if (category !== null) updateData.category = category;
-  if (date) updateData.date = new Date(date);
 
-  // Handle new files
-  const files = formData.getAll("files") as File[];
-  const newFiles = files.filter((f) => f && f.size > 0);
+  // Owner (admin@youmee.pl) can only change description, hashtags, and status (to "approved" only)
+  if (email === OWNER_EMAIL) {
+    const description = formData.get("description") as string;
+    const hashtags = formData.get("hashtags") as string;
+    const status = formData.get("status") as string;
 
-  if (newFiles.length > 0) {
-    // Delete old media
-    await prisma.media.deleteMany({ where: { postId: id } });
-
-    const mediaData = [];
-    for (let i = 0; i < newFiles.length; i++) {
-      const saved = await uploadFile(newFiles[i]);
-      mediaData.push({ ...saved, order: i, postId: id });
+    if (description !== null) updateData.description = stripHtml(description);
+    if (hashtags !== null) updateData.hashtags = stripHtml(hashtags);
+    if (status !== null) {
+      if (status !== "approved") {
+        return NextResponse.json(
+          { error: "Mozesz ustawic status tylko na 'approved'" },
+          { status: 403 }
+        );
+      }
+      updateData.status = status;
     }
+  } else {
+    // Creator (maciek@youmee.pl) can change everything
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+    const hashtags = formData.get("hashtags") as string;
+    const status = formData.get("status") as string;
+    const date = formData.get("date") as string;
+    const platform = formData.get("platform") as string;
+    const category = formData.get("category") as string;
 
-    await prisma.media.createMany({ data: mediaData });
-    updateData.imageUrl = mediaData[0].url;
+    if (title !== null) updateData.title = stripHtml(title);
+    if (description !== null) updateData.description = stripHtml(description);
+    if (hashtags !== null) updateData.hashtags = stripHtml(hashtags);
+    if (status !== null) {
+      if (!isValidStatus(status)) {
+        return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      }
+      updateData.status = status;
+    }
+    if (platform !== null) {
+      if (!isValidPlatform(platform)) {
+        return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
+      }
+      updateData.platform = platform;
+    }
+    if (category !== null) {
+      if (!isValidCategory(category)) {
+        return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+      }
+      updateData.category = category;
+    }
+    if (date) updateData.date = new Date(date);
+
+    // Handle new files - only creator can upload
+    const files = formData.getAll("files") as File[];
+    const newFiles = files.filter((f) => f && f.size > 0);
+
+    if (newFiles.length > 0) {
+      await prisma.media.deleteMany({ where: { postId: id } });
+
+      const mediaData = [];
+      for (let i = 0; i < newFiles.length; i++) {
+        const saved = await uploadFile(newFiles[i]);
+        mediaData.push({ ...saved, order: i, postId: id });
+      }
+
+      await prisma.media.createMany({ data: mediaData });
+      updateData.imageUrl = mediaData[0].url;
+    }
   }
 
   const post = await prisma.post.update({
@@ -93,7 +135,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || (session.user as { role: string }).role !== "admin") {
+  if (!session || session.user?.email !== CREATOR_EMAIL) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

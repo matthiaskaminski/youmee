@@ -32,6 +32,7 @@ model Post {
   date        DateTime?
   order       Int       @default(0)
   platform    String    @default("instagram") // instagram, facebook, both
+  category    String    @default("post") // post, story, reels
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   comments    Comment[]

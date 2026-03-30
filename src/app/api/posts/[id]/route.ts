@@ -45,6 +45,7 @@ export async function PUT(
   const status = formData.get("status") as string;
   const date = formData.get("date") as string;
   const platform = formData.get("platform") as string;
+  const category = formData.get("category") as string;
 
   const updateData: Record<string, unknown> = {};
   if (title !== null) updateData.title = title;
@@ -52,6 +53,7 @@ export async function PUT(
   if (hashtags !== null) updateData.hashtags = hashtags;
   if (status !== null) updateData.status = status;
   if (platform !== null) updateData.platform = platform;
+  if (category !== null) updateData.category = category;
   if (date) updateData.date = new Date(date);
 
   // Handle new files

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import StatusBadge from "./StatusBadge";
 import type { Post } from "@/types/post";
@@ -17,7 +17,14 @@ export default function PostModal({
   onDelete: (id: string) => void;
 }) {
   const { data: session } = useSession();
-  const isAdmin = (session?.user as { role?: string })?.role === "admin";
+  const userEmail = session?.user?.email;
+  // maciek@youmee.pl = creator (create/edit/delete)
+  // admin@youmee.pl = owner (view/approve/comment only)
+  const isCreator = userEmail === "maciek@youmee.pl";
+  const isOwner = userEmail === "admin@youmee.pl";
+  const canEdit = isCreator;
+  const canApprove = isOwner || isCreator;
+
   const [comment, setComment] = useState("");
   const [sendingComment, setSendingComment] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -29,11 +36,34 @@ export default function PostModal({
     status: post.status,
     date: post.date ? post.date.split("T")[0] : "",
     platform: post.platform,
+    category: post.category || "post",
   });
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Swipe handling
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    const diff = touchStartX.current - touchEndX.current;
+    const threshold = 50;
+    if (diff > threshold && currentSlide < mediaItems.length - 1) {
+      setCurrentSlide((s) => s + 1);
+    } else if (diff < -threshold && currentSlide > 0) {
+      setCurrentSlide((s) => s - 1);
+    }
+  }, [currentSlide]);
 
   const mediaItems = post.media && post.media.length > 0
     ? post.media
@@ -43,7 +73,7 @@ export default function PostModal({
 
   const hasMultipleSlides = mediaItems.length > 1;
 
-  // Preload all carousel images for instant switching
+  // Preload all carousel images
   const preloadedRef = useRef(false);
   if (!preloadedRef.current && mediaItems.length > 1) {
     preloadedRef.current = true;
@@ -77,6 +107,7 @@ export default function PostModal({
     formData.append("status", editData.status);
     formData.append("date", editData.date);
     formData.append("platform", editData.platform);
+    formData.append("category", editData.category);
     for (const file of newFiles) {
       formData.append("files", file);
     }
@@ -88,12 +119,10 @@ export default function PostModal({
     onUpdate();
   };
 
-  const cycleStatus = async () => {
-    const order = ["draft", "review", "approved", "published"];
-    const next = order[(order.indexOf(post.status) + 1) % order.length];
+  const approvePost = async () => {
     const fd = new FormData();
     fd.append("title", post.title);
-    fd.append("status", next);
+    fd.append("status", "approved");
     await fetch(`/api/posts/${post.id}`, { method: "PUT", body: fd });
     onUpdate();
   };
@@ -101,19 +130,38 @@ export default function PostModal({
   const prevSlide = () => setCurrentSlide((s) => Math.max(0, s - 1));
   const nextSlide = () => setCurrentSlide((s) => Math.min(mediaItems.length - 1, s + 1));
 
+  const categoryLabel = (cat: string) => {
+    if (cat === "story") return "InstaStory";
+    if (cat === "reels") return "Reels";
+    return "Post";
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-beige rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-beige rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close X - top right */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-30 w-8 h-8 bg-beige/80 backdrop-blur-sm rounded-full flex items-center justify-center text-ym-text hover:bg-beige transition text-lg leading-none"
+        >
+          ✕
+        </button>
+
         {/* Media carousel / video */}
         {mediaItems.length > 0 && (
           <div className="relative bg-beige-2 rounded-t-2xl">
-            <div className="relative overflow-hidden rounded-t-2xl">
+            <div
+              className="relative overflow-hidden rounded-t-2xl"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               {mediaItems[currentSlide]?.type === "video" ? (
                 <video
                   src={mediaItems[currentSlide].url}
@@ -156,9 +204,7 @@ export default function PostModal({
                       key={i}
                       onClick={() => setCurrentSlide(i)}
                       className={`w-2 h-2 rounded-full transition ${
-                        i === currentSlide
-                          ? "bg-ym-text"
-                          : "bg-ym-text/30"
+                        i === currentSlide ? "bg-ym-text" : "bg-ym-text/30"
                       }`}
                     />
                   ))}
@@ -166,9 +212,9 @@ export default function PostModal({
               </>
             )}
 
-            {/* Slide counter */}
+            {/* Slide counter - top LEFT */}
             {hasMultipleSlides && (
-              <div className="absolute top-3 right-3 bg-ym-text/60 text-beige text-xs px-2 py-1 rounded-full">
+              <div className="absolute top-3 left-3 bg-ym-text/60 text-beige text-xs px-2 py-1 rounded-full">
                 {currentSlide + 1} / {mediaItems.length}
               </div>
             )}
@@ -210,36 +256,26 @@ export default function PostModal({
               <h2 className="text-xl font-bold text-ym-text">{post.title}</h2>
             )}
             <div className="flex items-center gap-2 shrink-0">
-              <StatusBadge
-                status={editing ? editData.status : post.status}
-                onClick={
-                  isAdmin ? (editing ? undefined : cycleStatus) : undefined
-                }
-              />
-              <button
-                onClick={onClose}
-                className="text-ym-text-2 hover:text-ym-text text-xl leading-none"
-              >
-                ✕
-              </button>
+              <StatusBadge status={editing ? editData.status : post.status} />
             </div>
           </div>
 
-          {/* Media type indicator */}
-          {mediaItems.length > 0 && (
-            <div className="flex items-center gap-2 mb-3 text-xs text-ym-text-2">
-              {mediaItems.length > 1 && (
-                <span className="bg-beige-2 px-2 py-0.5 rounded-full">
-                  Karuzela ({mediaItems.length} slajdów)
-                </span>
-              )}
-              {mediaItems.some((m) => m.type === "video") && (
-                <span className="bg-beige-2 px-2 py-0.5 rounded-full">
-                  Video
-                </span>
-              )}
-            </div>
-          )}
+          {/* Media type + category indicator */}
+          <div className="flex items-center gap-2 mb-3 text-xs text-ym-text-2">
+            <span className="bg-beige-2 px-2 py-0.5 rounded-full font-medium">
+              {categoryLabel(post.category || "post")}
+            </span>
+            {mediaItems.length > 1 && (
+              <span className="bg-beige-2 px-2 py-0.5 rounded-full">
+                Karuzela ({mediaItems.length} slajdów)
+              </span>
+            )}
+            {mediaItems.some((m) => m.type === "video") && (
+              <span className="bg-beige-2 px-2 py-0.5 rounded-full">
+                Video
+              </span>
+            )}
+          </div>
 
           {/* New files preview when editing */}
           {editing && newFiles.length > 0 && (
@@ -276,7 +312,7 @@ export default function PostModal({
                 placeholder="#hashtagi"
                 className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm"
               />
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs text-ym-text-2">Data</label>
                   <input
@@ -287,6 +323,20 @@ export default function PostModal({
                     }
                     className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm"
                   />
+                </div>
+                <div>
+                  <label className="text-xs text-ym-text-2">Kategoria</label>
+                  <select
+                    value={editData.category}
+                    onChange={(e) =>
+                      setEditData({ ...editData, category: e.target.value })
+                    }
+                    className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <option value="post">Post</option>
+                    <option value="story">InstaStory</option>
+                    <option value="reels">Reels</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs text-ym-text-2">Status</label>
@@ -360,22 +410,37 @@ export default function PostModal({
                 )}
                 <span className="capitalize">{post.platform}</span>
               </div>
-              {isAdmin && (
-                <div className="flex gap-2 mt-4">
+
+              {/* Action buttons based on role */}
+              <div className="flex gap-2 mt-4">
+                {/* Owner can approve */}
+                {isOwner && post.status === "review" && (
+                  <button
+                    onClick={approvePost}
+                    className="px-4 py-2 bg-ym-green-2 text-beige rounded-lg text-sm font-medium hover:bg-ym-green-3 transition"
+                  >
+                    Zaakceptuj
+                  </button>
+                )}
+                {/* Creator can edit */}
+                {canEdit && (
                   <button
                     onClick={() => setEditing(true)}
                     className="px-3 py-1.5 bg-beige-2 rounded-lg text-sm hover:bg-ym-blue/50"
                   >
                     Edytuj
                   </button>
+                )}
+                {/* Creator can delete */}
+                {canEdit && (
                   <button
                     onClick={() => setConfirmDelete(true)}
                     className="px-3 py-1.5 bg-ym-pink/50 text-ym-pink-2 rounded-lg text-sm hover:bg-ym-pink"
                   >
                     Usuń
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

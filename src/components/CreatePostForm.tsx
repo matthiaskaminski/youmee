@@ -86,6 +86,7 @@ export default function CreatePostForm({
   const [hashtags, setHashtags] = useState("");
   const [date, setDate] = useState(defaultDate || "");
   const [platform, setPlatform] = useState("instagram");
+  const [category, setCategory] = useState("post");
   const [status, setStatus] = useState("draft");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
@@ -141,6 +142,7 @@ export default function CreatePostForm({
     formData.append("hashtags", hashtags);
     formData.append("date", date);
     formData.append("platform", platform);
+    formData.append("category", category);
     formData.append("status", status);
     // Files are already in the reordered order
     for (const file of files) {
@@ -155,6 +157,7 @@ export default function CreatePostForm({
     setHashtags("");
     setDate("");
     setPlatform("instagram");
+    setCategory("post");
     setStatus("draft");
     setFiles([]);
     setPreviews([]);
@@ -251,7 +254,7 @@ export default function CreatePostForm({
           className="w-full bg-beige rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ym-blue-2"
         />
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
             <label className="text-xs text-ym-text-2 mb-1 block">Data</label>
             <input
@@ -260,6 +263,18 @@ export default function CreatePostForm({
               onChange={(e) => setDate(e.target.value)}
               className="w-full bg-beige rounded-xl px-4 py-2.5 text-sm"
             />
+          </div>
+          <div>
+            <label className="text-xs text-ym-text-2 mb-1 block">Kategoria</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full bg-beige rounded-xl px-4 py-2.5 text-sm"
+            >
+              <option value="post">Post</option>
+              <option value="story">InstaStory</option>
+              <option value="reels">Reels</option>
+            </select>
           </div>
           <div>
             <label className="text-xs text-ym-text-2 mb-1 block">

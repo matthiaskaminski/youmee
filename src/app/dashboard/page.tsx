@@ -22,6 +22,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [addPostDate, setAddPostDate] = useState<string | null>(null);
 
+  const userEmail = session?.user?.email;
+  const isCreator = userEmail === "maciek@youmee.pl"; // can create/edit/delete
   const isAdmin = (session?.user as { role?: string })?.role === "admin";
 
   const fetchPosts = useCallback(async () => {
@@ -119,9 +121,9 @@ export default function DashboardPage() {
       <div className="h-screen bg-beige flex flex-col overflow-hidden">
         <Navbar view={view} onViewChange={setView} />
 
-        {/* Stats bar - compact */}
+        {/* Stats bar - 2x2 on mobile, 4 cols on desktop */}
         <div className="px-3 sm:px-6 lg:px-8 py-1.5 max-w-[1600px] mx-auto w-full shrink-0">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-beige-2 rounded-lg px-3 py-1.5 flex items-center gap-2">
               <p className="text-lg font-bold text-ym-text">{posts.length}</p>
               <p className="text-xs text-ym-text-2">Wszystkie</p>
@@ -152,14 +154,14 @@ export default function DashboardPage() {
           <CalendarView
             posts={posts}
             onPostClick={handlePostClick}
-            isAdmin={isAdmin}
+            isAdmin={isCreator}
             onAddPost={handleAddPostFromCalendar}
             onDateChange={handleDateChange}
           />
         </div>
 
         {/* Create post modal overlay */}
-        {addPostDate && isAdmin && (
+        {addPostDate && isCreator && (
           <div
             className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
             onClick={() => setAddPostDate(null)}
@@ -197,7 +199,7 @@ export default function DashboardPage() {
 
       <main className="mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-[1600px]">
         {/* Admin: create post (only on non-calendar views) */}
-        {isAdmin && (
+        {isCreator && (
           <div className="mb-6">
             <CreatePostForm onCreated={fetchPosts} />
           </div>

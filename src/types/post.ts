@@ -22,6 +22,7 @@ export interface Post {
   date: string | null;
   order: number;
   platform: string;
+  category: string;
   media: MediaItem[];
   comments: Comment[];
 }

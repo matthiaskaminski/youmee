@@ -318,10 +318,13 @@ export default function CalendarView({
                     ? "bg-ym-blue-2"
                     : isT
                       ? "bg-ym-blue/30 border border-ym-blue-2"
-                      : isCurrentMonth
-                        ? "bg-beige-2"
-                        : "bg-beige-2/50"
+                      : hasPosts && isCurrentMonth
+                        ? "bg-beige-3 border border-beige-4"
+                        : isCurrentMonth
+                          ? "bg-beige-2"
+                          : "bg-beige-2/50"
                 }`}
+                style={hasPosts && isCurrentMonth && !isSelected && !isT ? { backgroundColor: "#E5DED7" } : undefined}
               >
                 <span
                   className={`text-sm font-medium ${
@@ -378,24 +381,24 @@ export default function CalendarView({
                     className="w-full text-left bg-beige-2 rounded-xl p-3 border border-beige-2 hover:border-ym-blue-2 transition flex items-center gap-3"
                   >
                     {post.imageUrl ? (
-                      <div className="relative w-16 h-16 shrink-0">
+                      <div className="relative w-20 h-20 shrink-0">
                         <img
                           src={post.imageUrl}
                           alt=""
-                          className="w-16 h-16 object-cover rounded-lg"
+                          className="w-20 h-20 object-cover rounded-xl"
                         />
                         {post.media && post.media.length > 1 && (
-                          <span className="absolute top-0.5 right-0.5 bg-ym-text/60 text-beige text-[8px] px-1 rounded">
+                          <span className="absolute top-1 right-1 bg-ym-text/60 text-beige text-[9px] px-1.5 py-0.5 rounded">
                             {post.media.length}
                           </span>
                         )}
                         {post.media?.some((m) => m.type === "video") && (
-                          <span className="absolute bottom-0.5 left-0.5 text-xs">▶</span>
+                          <span className="absolute bottom-1 left-1 text-sm">▶</span>
                         )}
                       </div>
                     ) : (
-                      <div className="w-16 h-16 bg-beige rounded-lg shrink-0 flex items-center justify-center">
-                        <span className="text-ym-text-2 text-[10px]">Brak</span>
+                      <div className="w-20 h-20 bg-beige rounded-xl shrink-0 flex items-center justify-center">
+                        <span className="text-ym-text-2 text-xs">Brak</span>
                       </div>
                     )}
                     <div className="flex-1 min-w-0">

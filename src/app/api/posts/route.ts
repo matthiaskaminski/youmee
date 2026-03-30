@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
   const status = (formData.get("status") as string) || "draft";
   const date = formData.get("date") as string;
   const platform = (formData.get("platform") as string) || "instagram";
+  const category = (formData.get("category") as string) || "post";
 
   // Handle multiple files
   const files = formData.getAll("files") as File[];
@@ -89,6 +90,7 @@ export async function POST(req: NextRequest) {
       status,
       date: date ? new Date(date) : null,
       platform,
+      category,
       media: {
         create: mediaData,
       },

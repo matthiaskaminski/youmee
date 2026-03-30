@@ -1,6 +1,73 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+interface PreviewItem {
+  id: string;
+  url: string;
+  type: string;
+  fileIndex: number;
+}
+
+function SortablePreview({ item }: { item: PreviewItem }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 0,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="shrink-0 cursor-grab active:cursor-grabbing relative group"
+    >
+      {item.type === "video" ? (
+        <div className="w-24 h-24 bg-ym-text/10 rounded-lg flex items-center justify-center">
+          <span className="text-2xl">▶</span>
+          <span className="text-xs text-ym-text-2 ml-1">Video</span>
+        </div>
+      ) : (
+        <img
+          src={item.url}
+          alt=""
+          className="w-24 h-24 object-cover rounded-lg"
+        />
+      )}
+      <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-ym-blue-2 transition pointer-events-none" />
+      <span className="absolute -top-1 -left-1 bg-ym-text text-beige text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition">
+        ⠿
+      </span>
+    </div>
+  );
+}
 
 export default function CreatePostForm({
   onCreated,
@@ -21,9 +88,13 @@ export default function CreatePostForm({
   const [platform, setPlatform] = useState("instagram");
   const [status, setStatus] = useState("draft");
   const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<{ url: string; type: string }[]>([]);
+  const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   useEffect(() => {
     if (defaultOpen) setOpen(true);
@@ -35,13 +106,29 @@ export default function CreatePostForm({
     const arr = Array.from(selectedFiles);
     setFiles(arr);
 
-    const newPreviews: { url: string; type: string }[] = [];
-    for (const file of arr) {
+    const newPreviews: PreviewItem[] = arr.map((file, i) => {
       const isVideo = file.type.startsWith("video/");
       const url = URL.createObjectURL(file);
-      newPreviews.push({ url, type: isVideo ? "video" : "image" });
-    }
+      return { id: `preview-${i}`, url, type: isVideo ? "video" : "image", fileIndex: i };
+    });
     setPreviews(newPreviews);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = previews.findIndex((p) => p.id === active.id);
+    const newIndex = previews.findIndex((p) => p.id === over.id);
+
+    const newPreviews = arrayMove(previews, oldIndex, newIndex);
+    setPreviews(newPreviews);
+
+    // Reorder files array to match
+    const newFiles = newPreviews.map((p) => files[p.fileIndex]);
+    setFiles(newFiles);
+    // Update fileIndex references
+    setPreviews(newPreviews.map((p, i) => ({ ...p, fileIndex: i })));
   };
 
   const handleSubmit = async () => {
@@ -55,6 +142,7 @@ export default function CreatePostForm({
     formData.append("date", date);
     formData.append("platform", platform);
     formData.append("status", status);
+    // Files are already in the reordered order
     for (const file of files) {
       formData.append("files", file);
     }
@@ -96,23 +184,26 @@ export default function CreatePostForm({
           className="border-2 border-dashed border-ym-blue rounded-xl p-6 text-center cursor-pointer hover:border-ym-blue-2 transition"
         >
           {previews.length > 0 ? (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {previews.map((p, i) => (
-                <div key={i} className="shrink-0">
-                  {p.type === "video" ? (
-                    <div className="w-24 h-24 bg-ym-text/10 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">▶</span>
-                      <span className="text-xs text-ym-text-2 ml-1">Video</span>
-                    </div>
-                  ) : (
-                    <img
-                      src={p.url}
-                      alt=""
-                      className="w-24 h-24 object-cover rounded-lg"
-                    />
-                  )}
-                </div>
-              ))}
+            <div onClick={(e) => e.stopPropagation()}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={previews.map((p) => p.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {previews.map((p) => (
+                      <SortablePreview key={p.id} item={p} />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              <p className="text-[10px] text-ym-text-3 mt-2">
+                Przeciągnij aby zmienić kolejność • Kliknij poza zdjęciami aby dodać więcej
+              </p>
             </div>
           ) : (
             <div>

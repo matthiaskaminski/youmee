@@ -1,14 +1,139 @@
 "use client";
 
 import { useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import StatusBadge from "./StatusBadge";
 import type { Post } from "@/types/post";
 
 interface CalendarDay {
   day: number;
-  month: number; // 0-indexed
+  month: number;
   year: number;
   isCurrentMonth: boolean;
+}
+
+function DraggablePost({
+  post,
+  dayPosts,
+  onPostClick,
+  isAdmin,
+}: {
+  post: Post;
+  dayPosts: Post[];
+  onPostClick: (post: Post) => void;
+  isAdmin?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `post-${post.id}`,
+    data: { post },
+    disabled: !isAdmin,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative group/post min-h-0 flex-1 ${isDragging ? "opacity-30" : ""}`}
+      {...(isAdmin ? { ...attributes, ...listeners } : {})}
+    >
+      <button
+        onClick={() => onPostClick(post)}
+        className={`w-full h-full text-left ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}`}
+      >
+        <div className="rounded p-0.5 hover:bg-beige/50 transition h-full flex flex-col">
+          {post.imageUrl && (
+            <div className="relative flex-1 min-h-0">
+              <img
+                src={post.imageUrl}
+                alt=""
+                className="w-full h-full object-cover rounded"
+                style={{ minHeight: 0 }}
+              />
+              {post.media && post.media.length > 1 && (
+                <span className="absolute top-0.5 right-0.5 bg-ym-text/60 text-beige text-[7px] px-0.5 rounded">
+                  {post.media.length}
+                </span>
+              )}
+              {post.media?.some((m) => m.type === "video") && (
+                <span className="absolute top-0.5 left-0.5 text-[9px]">▶</span>
+              )}
+            </div>
+          )}
+          <p className="text-[9px] font-medium text-ym-text truncate shrink-0 mt-0.5">
+            {post.title}
+          </p>
+          {dayPosts.length > 1 && (
+            <div className="shrink-0 mt-0.5">
+              <StatusBadge status={post.status} />
+            </div>
+          )}
+        </div>
+      </button>
+
+      {/* Hover preview popup */}
+      {post.imageUrl && !isDragging && (
+        <div className="hidden group-hover/post:block absolute z-50 left-full top-0 ml-2 pointer-events-none">
+          <div className="bg-beige rounded-xl shadow-xl border border-beige-2 p-2 w-64">
+            <img
+              src={post.imageUrl}
+              alt={post.title}
+              className="w-full rounded-lg"
+            />
+            <p className="text-xs font-medium text-ym-text mt-1.5 truncate">
+              {post.title}
+            </p>
+            {post.description && (
+              <p className="text-[10px] text-ym-text-2 mt-0.5 line-clamp-2">
+                {post.description}
+              </p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <StatusBadge status={post.status} />
+              {post.media && post.media.length > 1 && (
+                <span className="text-[10px] text-ym-text-2">
+                  {post.media.length} slajdów
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DroppableCell({
+  cd,
+  isOver,
+  children,
+}: {
+  cd: CalendarDay;
+  isOver: boolean;
+  children: React.ReactNode;
+}) {
+  const dateStr = `${cd.year}-${String(cd.month + 1).padStart(2, "0")}-${String(cd.day).padStart(2, "0")}`;
+  const { setNodeRef } = useDroppable({
+    id: `cell-${dateStr}`,
+    data: { date: dateStr, calendarDay: cd },
+  });
+
+  return (
+    <div ref={setNodeRef} className="h-full">
+      {children}
+      {isOver && (
+        <div className="absolute inset-0 border-2 border-ym-blue-2 rounded-lg bg-ym-blue/20 pointer-events-none z-10" />
+      )}
+    </div>
+  );
 }
 
 export default function CalendarView({
@@ -16,28 +141,33 @@ export default function CalendarView({
   onPostClick,
   isAdmin,
   onAddPost,
+  onDateChange,
 }: {
   posts: Post[];
   onPostClick: (post: Post) => void;
   isAdmin?: boolean;
   onAddPost?: (date: string) => void;
+  onDateChange?: (postId: string, newDate: string) => void;
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mobileSelectedDay, setMobileSelectedDay] = useState<CalendarDay | null>(null);
+  const [draggedPost, setDraggedPost] = useState<Post | null>(null);
+  const [overCellId, setOverCellId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // Build calendar grid with prev/next month days
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const offset = firstDay === 0 ? 6 : firstDay - 1;
-
   const prevMonthDays = new Date(year, month, 0).getDate();
 
   const calendarDays: CalendarDay[] = [];
 
-  // Previous month trailing days
   for (let i = offset - 1; i >= 0; i--) {
     const d = prevMonthDays - i;
     const m = month === 0 ? 11 : month - 1;
@@ -45,12 +175,10 @@ export default function CalendarView({
     calendarDays.push({ day: d, month: m, year: y, isCurrentMonth: false });
   }
 
-  // Current month
   for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push({ day: i, month, year, isCurrentMonth: true });
   }
 
-  // Next month leading days - fill to complete the last row only
   const cellsSoFar = calendarDays.length;
   const remainingInRow = cellsSoFar % 7 === 0 ? 0 : 7 - (cellsSoFar % 7);
   for (let i = 1; i <= remainingInRow; i++) {
@@ -103,6 +231,34 @@ export default function CalendarView({
     ? getPostsForCalendarDay(mobileSelectedDay)
     : [];
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const post = event.active.data.current?.post as Post;
+    if (post) setDraggedPost(post);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverCellId(event.over?.id ? String(event.over.id) : null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDraggedPost(null);
+    setOverCellId(null);
+
+    if (!over) return;
+
+    const post = active.data.current?.post as Post;
+    const newDate = over.data.current?.date as string;
+
+    if (!post || !newDate) return;
+
+    // Check if date actually changed
+    const oldDate = post.date ? new Date(post.date).toISOString().split("T")[0] : null;
+    if (oldDate === newDate) return;
+
+    onDateChange?.(post.id, newDate);
+  };
+
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header */}
@@ -132,7 +288,6 @@ export default function CalendarView({
 
       {/* ===== MOBILE CALENDAR (< 768px) ===== */}
       <div className="block md:hidden">
-        {/* Day names */}
         <div className="grid grid-cols-7 gap-0.5 mb-1">
           {["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"].map((d) => (
             <div
@@ -144,7 +299,6 @@ export default function CalendarView({
           ))}
         </div>
 
-        {/* Day grid - compact */}
         <div className="grid grid-cols-7 gap-0.5">
           {calendarDays.map((cd, i) => {
             const hasPosts = getPostsForCalendarDay(cd).length > 0;
@@ -199,7 +353,6 @@ export default function CalendarView({
           })}
         </div>
 
-        {/* Mobile: Selected day posts */}
         {mobileSelectedDay !== null && (
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
@@ -270,152 +423,122 @@ export default function CalendarView({
       </div>
 
       {/* ===== DESKTOP CALENDAR (>= 768px) ===== */}
-      <div className="hidden md:flex flex-col flex-1 min-h-0">
-        {/* Day names */}
-        <div className="grid grid-cols-7 gap-1 shrink-0">
-          {["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"].map((d) => (
-            <div
-              key={d}
-              className="text-center text-[11px] font-medium text-ym-text-2 py-1"
-            >
-              {d}
-            </div>
-          ))}
-        </div>
-
-        {/* Day grid - fills all remaining space, with bottom margin */}
-        <div className={`grid grid-cols-7 gap-1 flex-1 min-h-0 mb-2`} style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}>
-          {calendarDays.map((cd, i) => {
-            const dayPosts = getPostsForCalendarDay(cd);
-            const isT = isTodayCheck(cd);
-            const isCurrentMonth = cd.isCurrentMonth;
-            const isEmpty = dayPosts.length === 0;
-
-            // Cell bg: has posts current month = #E5DED7, has posts other month = #EFE7E0
-            const hasPosts = dayPosts.length > 0;
-            const cellBg = isT
-              ? "bg-ym-blue/20 border-ym-blue-2 hover:bg-beige-3"
-              : isCurrentMonth
-                ? hasPosts
-                  ? "border-beige-2 hover:bg-beige-3"
-                  : "bg-beige-2 border-beige-2 hover:bg-beige-3"
-                : hasPosts
-                  ? "border-beige-2/50 hover:bg-beige-2/60"
-                  : "bg-beige-2/40 border-beige-2/50 hover:bg-beige-2/60";
-
-            return (
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="hidden md:flex flex-col flex-1 min-h-0">
+          <div className="grid grid-cols-7 gap-1 shrink-0">
+            {["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"].map((d) => (
               <div
-                key={i}
-                className={`border rounded-lg p-1.5 flex flex-col overflow-hidden group/cell relative transition-colors duration-150 ${cellBg}`}
-                style={hasPosts && !isT ? { backgroundColor: isCurrentMonth ? "#E5DED7" : "#EFE7E0" } : undefined}
+                key={d}
+                className="text-center text-[11px] font-medium text-ym-text-2 py-1"
               >
-                {/* Day number + badge row */}
-                <div className="flex items-center justify-between shrink-0 mb-0.5">
-                  <span
-                    className={`text-[11px] font-medium ${
-                      isT
-                        ? "text-ym-blue-3 font-bold"
-                        : isCurrentMonth
-                          ? "text-ym-text-2"
-                          : "text-ym-text-2/40"
-                    }`}
-                  >
-                    {cd.day === 1 && !isCurrentMonth
-                      ? `${cd.day} ${new Date(cd.year, cd.month).toLocaleDateString("pl-PL", { month: "short" })}`
-                      : cd.day}
-                  </span>
-                  {dayPosts.length === 1 && (
-                    <StatusBadge status={dayPosts[0].status} />
+                {d}
+              </div>
+            ))}
+          </div>
+
+          <div className={`grid grid-cols-7 gap-1 flex-1 min-h-0 mb-2`} style={{ gridTemplateRows: `repeat(${totalRows}, 1fr)` }}>
+            {calendarDays.map((cd, i) => {
+              const dayPosts = getPostsForCalendarDay(cd);
+              const isT = isTodayCheck(cd);
+              const isCurrentMonth = cd.isCurrentMonth;
+              const isEmpty = dayPosts.length === 0;
+              const hasPosts = dayPosts.length > 0;
+              const dateStr = formatDateISO(cd);
+              const isDropOver = overCellId === `cell-${dateStr}`;
+
+              const cellBg = isT
+                ? "bg-ym-blue/20 border-ym-blue-2 hover:bg-beige-3"
+                : isCurrentMonth
+                  ? hasPosts
+                    ? "border-beige-2 hover:bg-beige-3"
+                    : "bg-beige-2 border-beige-2 hover:bg-beige-3"
+                  : hasPosts
+                    ? "border-beige-2/50 hover:bg-beige-2/60"
+                    : "bg-beige-2/40 border-beige-2/50 hover:bg-beige-2/60";
+
+              return (
+                <div
+                  key={i}
+                  className={`border rounded-lg p-1.5 flex flex-col overflow-hidden group/cell relative transition-colors duration-150 ${cellBg}`}
+                  style={hasPosts && !isT ? { backgroundColor: isCurrentMonth ? "#E5DED7" : "#EFE7E0" } : undefined}
+                >
+                  <DroppableCell cd={cd} isOver={isDropOver}>
+                    <div className="flex flex-col h-full">
+                      {/* Day number + badge row */}
+                      <div className="flex items-center justify-between shrink-0 mb-0.5">
+                        <span
+                          className={`text-[11px] font-medium ${
+                            isT
+                              ? "text-ym-blue-3 font-bold"
+                              : isCurrentMonth
+                                ? "text-ym-text-2"
+                                : "text-ym-text-2/40"
+                          }`}
+                        >
+                          {cd.day === 1 && !isCurrentMonth
+                            ? `${cd.day} ${new Date(cd.year, cd.month).toLocaleDateString("pl-PL", { month: "short" })}`
+                            : cd.day}
+                        </span>
+                        {dayPosts.length === 1 && (
+                          <StatusBadge status={dayPosts[0].status} />
+                        )}
+                      </div>
+
+                      {/* Posts fill remaining space */}
+                      <div className="flex-1 flex flex-col gap-0.5 min-h-0">
+                        {dayPosts.map((post) => (
+                          <DraggablePost
+                            key={post.id}
+                            post={post}
+                            dayPosts={dayPosts}
+                            onPostClick={onPostClick}
+                            isAdmin={isAdmin}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </DroppableCell>
+
+                  {/* Single centered + button on hover for empty cells */}
+                  {isAdmin && onAddPost && isCurrentMonth && isEmpty && !draggedPost && (
+                    <button
+                      onClick={() => onAddPost(formatDateISO(cd))}
+                      className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all duration-200 rounded-lg z-20"
+                    >
+                      <span className="w-9 h-9 rounded-full bg-beige-4 flex items-center justify-center text-ym-text-2 text-xl leading-none transition-colors hover:bg-ym-text-3">
+                        <span className="relative -top-px">+</span>
+                      </span>
+                    </button>
                   )}
                 </div>
-
-                {/* Posts fill remaining space */}
-                <div className="flex-1 flex flex-col gap-0.5 min-h-0">
-                  {dayPosts.map((post) => (
-                    <div key={post.id} className="relative group/post min-h-0 flex-1">
-                      <button
-                        onClick={() => onPostClick(post)}
-                        className="w-full h-full text-left"
-                      >
-                        <div className="rounded p-0.5 hover:bg-beige/50 transition cursor-pointer h-full flex flex-col">
-                          {post.imageUrl && (
-                            <div className="relative flex-1 min-h-0">
-                              <img
-                                src={post.imageUrl}
-                                alt=""
-                                className="w-full h-full object-cover rounded"
-                                style={{ minHeight: 0 }}
-                              />
-                              {post.media && post.media.length > 1 && (
-                                <span className="absolute top-0.5 right-0.5 bg-ym-text/60 text-beige text-[7px] px-0.5 rounded">
-                                  {post.media.length}
-                                </span>
-                              )}
-                              {post.media?.some((m) => m.type === "video") && (
-                                <span className="absolute top-0.5 left-0.5 text-[9px]">▶</span>
-                              )}
-                            </div>
-                          )}
-                          <p className="text-[9px] font-medium text-ym-text truncate shrink-0 mt-0.5">
-                            {post.title}
-                          </p>
-                          {/* Show badge under title only when multiple posts */}
-                          {dayPosts.length > 1 && (
-                            <div className="shrink-0 mt-0.5">
-                              <StatusBadge status={post.status} />
-                            </div>
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Hover preview popup */}
-                      {post.imageUrl && (
-                        <div className="hidden group-hover/post:block absolute z-50 left-full top-0 ml-2 pointer-events-none">
-                          <div className="bg-beige rounded-xl shadow-xl border border-beige-2 p-2 w-64">
-                            <img
-                              src={post.imageUrl}
-                              alt={post.title}
-                              className="w-full rounded-lg"
-                            />
-                            <p className="text-xs font-medium text-ym-text mt-1.5 truncate">
-                              {post.title}
-                            </p>
-                            {post.description && (
-                              <p className="text-[10px] text-ym-text-2 mt-0.5 line-clamp-2">
-                                {post.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <StatusBadge status={post.status} />
-                              {post.media && post.media.length > 1 && (
-                                <span className="text-[10px] text-ym-text-2">
-                                  {post.media.length} slajdów
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Single centered + button on hover for empty cells */}
-                {isAdmin && onAddPost && isCurrentMonth && isEmpty && (
-                  <button
-                    onClick={() => onAddPost(formatDateISO(cd))}
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-all duration-200 rounded-lg"
-                  >
-                    <span className="w-9 h-9 rounded-full bg-beige-4 flex items-center justify-center text-ym-text-2 text-xl leading-none transition-colors hover:bg-ym-text-3">
-                      <span className="relative -top-px">+</span>
-                    </span>
-                  </button>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+
+        {/* Drag overlay - floating post preview */}
+        <DragOverlay>
+          {draggedPost && (
+            <div className="bg-beige rounded-xl shadow-xl border border-ym-blue-2 p-2 w-32 opacity-90">
+              {draggedPost.imageUrl && (
+                <img
+                  src={draggedPost.imageUrl}
+                  alt=""
+                  className="w-full h-20 object-cover rounded-lg"
+                />
+              )}
+              <p className="text-[10px] font-medium text-ym-text truncate mt-1">
+                {draggedPost.title}
+              </p>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Unscheduled posts */}
       {posts.filter((p) => !p.date).length > 0 && (

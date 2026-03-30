@@ -83,6 +83,23 @@ export default function DashboardPage() {
     setAddPostDate(date);
   };
 
+  const handleDateChange = async (postId: string, newDate: string) => {
+    // Optimistic update
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, date: new Date(newDate).toISOString() } : p
+      )
+    );
+
+    await fetch("/api/posts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: postId, date: newDate }),
+    });
+
+    fetchPosts();
+  };
+
   const handlePostCreated = () => {
     setAddPostDate(null);
     fetchPosts();
@@ -137,6 +154,7 @@ export default function DashboardPage() {
             onPostClick={handlePostClick}
             isAdmin={isAdmin}
             onAddPost={handleAddPostFromCalendar}
+            onDateChange={handleDateChange}
           />
         </div>
 

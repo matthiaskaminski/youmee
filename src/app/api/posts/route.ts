@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { supabase } from "@/lib/supabase";
 import { v4 as uuid } from "uuid";
 
-const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
-
-async function saveFile(file: File): Promise<{ url: string; type: "image" | "video" }> {
-  await mkdir(UPLOADS_DIR, { recursive: true });
+async function uploadFile(file: File): Promise<{ url: string; type: "image" | "video" }> {
   const ext = file.name.split(".").pop()?.toLowerCase() || "png";
   const filename = `${uuid()}.${ext}`;
   const bytes = new Uint8Array(await file.arrayBuffer());
-  await writeFile(path.join(UPLOADS_DIR, filename), bytes);
+
+  const { error } = await supabase.storage
+    .from("media")
+    .upload(filename, bytes, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  const { data: urlData } = supabase.storage
+    .from("media")
+    .getPublicUrl(filename);
 
   const videoExts = ["mp4", "mov", "webm", "avi"];
   const type = videoExts.includes(ext) ? "video" : "image";
 
-  return { url: `/uploads/${filename}`, type };
+  return { url: urlData.publicUrl, type };
 }
 
 export async function GET() {
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     if (file && file.size > 0) {
-      const saved = await saveFile(file);
+      const saved = await uploadFile(file);
       mediaData.push({ ...saved, order: i });
       if (i === 0) thumbnailUrl = saved.url;
     }
@@ -66,7 +74,7 @@ export async function POST(req: NextRequest) {
   if (mediaData.length === 0) {
     const singleImage = formData.get("image") as File | null;
     if (singleImage && singleImage.size > 0) {
-      const saved = await saveFile(singleImage);
+      const saved = await uploadFile(singleImage);
       mediaData.push({ ...saved, order: 0 });
       thumbnailUrl = saved.url;
     }

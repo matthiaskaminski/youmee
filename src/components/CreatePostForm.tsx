@@ -47,24 +47,24 @@ function SortablePreview({ item }: { item: PreviewItem }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="shrink-0 cursor-grab active:cursor-grabbing relative group"
+      className="shrink-0 cursor-grab active:cursor-grabbing relative group overflow-hidden rounded-xl"
     >
       {item.type === "video" ? (
-        <div className="w-24 h-24 bg-ym-text/10 rounded-lg flex items-center justify-center">
-          <span className="text-2xl">▶</span>
-          <span className="text-xs text-ym-text-2 ml-1">Video</span>
+        <div className="w-36 h-36 bg-ym-text/10 rounded-xl flex flex-col items-center justify-center gap-1">
+          <span className="text-3xl">▶</span>
+          <span className="text-xs text-ym-text-2">Video</span>
         </div>
       ) : (
         <img
           src={item.url}
           alt=""
-          className="w-24 h-24 object-cover rounded-lg"
+          className="w-36 h-36 object-cover rounded-xl"
         />
       )}
-      <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-ym-blue-2 transition pointer-events-none" />
-      <span className="absolute -top-1 -left-1 bg-ym-text text-beige text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition">
-        ⠿
-      </span>
+      <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-ym-blue-2 transition pointer-events-none" />
+      <div className="absolute inset-0 rounded-xl bg-ym-text/0 group-hover:bg-ym-text/10 transition pointer-events-none flex items-center justify-center">
+        <span className="text-beige text-lg opacity-0 group-hover:opacity-100 transition drop-shadow">⠿</span>
+      </div>
     </div>
   );
 }
@@ -194,7 +194,7 @@ export default function CreatePostForm({
                   items={previews.map((p) => p.id)}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <div className="flex gap-2 overflow-x-auto pb-2">
+                  <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-brand">
                     {previews.map((p) => (
                       <SortablePreview key={p.id} item={p} />
                     ))}

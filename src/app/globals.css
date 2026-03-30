@@ -38,3 +38,19 @@ body {
   color: var(--color-ym-text);
   background-color: var(--color-beige);
 }
+
+/* Custom scrollbar */
+.scrollbar-brand::-webkit-scrollbar {
+  height: 6px;
+}
+.scrollbar-brand::-webkit-scrollbar-track {
+  background: var(--color-beige-2);
+  border-radius: 3px;
+}
+.scrollbar-brand::-webkit-scrollbar-thumb {
+  background: var(--color-beige-4);
+  border-radius: 3px;
+}
+.scrollbar-brand::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ym-text-3);
+}

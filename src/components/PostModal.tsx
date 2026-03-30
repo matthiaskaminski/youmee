@@ -22,7 +22,8 @@ export default function PostModal({
   // admin@youmee.pl = owner (view/approve/comment only)
   const isCreator = userEmail === "maciek@youmee.pl";
   const isOwner = userEmail === "admin@youmee.pl";
-  const canEdit = isCreator;
+  const canEdit = isCreator || isOwner;
+  const canDelete = isCreator;
   const canApprove = isOwner || isCreator;
 
   const [comment, setComment] = useState("");
@@ -431,8 +432,8 @@ export default function PostModal({
                     Edytuj
                   </button>
                 )}
-                {/* Creator can delete */}
-                {canEdit && (
+                {/* Only creator can delete */}
+                {canDelete && (
                   <button
                     onClick={() => setConfirmDelete(true)}
                     className="px-3 py-1.5 bg-ym-pink/50 text-ym-pink-2 rounded-lg text-sm hover:bg-ym-pink"

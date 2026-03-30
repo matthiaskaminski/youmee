@@ -260,7 +260,7 @@ export default function CalendarView({
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col md:justify-start justify-center">
       {/* Header */}
       <div className="flex items-center justify-between mb-2 shrink-0">
         <button

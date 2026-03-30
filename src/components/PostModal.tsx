@@ -42,6 +42,18 @@ export default function PostModal({
 
   const hasMultipleSlides = mediaItems.length > 1;
 
+  // Preload all carousel images for instant switching
+  const preloadedRef = useRef(false);
+  if (!preloadedRef.current && mediaItems.length > 1) {
+    preloadedRef.current = true;
+    mediaItems.forEach((m) => {
+      if (m.type === "image") {
+        const img = new Image();
+        img.src = m.url;
+      }
+    });
+  }
+
   const addComment = async () => {
     if (!comment.trim()) return;
     setSendingComment(true);

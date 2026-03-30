@@ -37,7 +37,8 @@ function SortablePost({
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       <div
         onClick={onClick}
-        className="aspect-square bg-beige-2 rounded-lg overflow-hidden cursor-pointer hover:ring-2 hover:ring-ym-blue-2 transition relative group"
+        className="bg-beige-2 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-ym-blue-2 transition relative group"
+        style={{ aspectRatio: "4 / 5" }}
       >
         {post.imageUrl ? (
           <img
@@ -54,23 +55,23 @@ function SortablePost({
         )}
         {/* Carousel / video indicator */}
         {post.media && post.media.length > 1 && (
-          <div className="absolute top-1.5 right-1.5 bg-ym-text/60 text-beige text-[10px] px-1.5 py-0.5 rounded">
+          <div className="absolute top-2 right-2 bg-ym-text/60 text-beige text-[11px] px-2 py-0.5 rounded">
             {post.media.length}
           </div>
         )}
         {post.media?.some((m) => m.type === "video") && (
-          <div className="absolute top-1.5 left-1.5 text-sm">▶</div>
+          <div className="absolute top-2 left-2 text-base">▶</div>
         )}
         {/* Overlay on hover */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-end opacity-0 group-hover:opacity-100">
-          <div className="p-2 w-full">
-            <p className="text-white text-xs font-medium truncate">
+          <div className="p-3 w-full">
+            <p className="text-white text-sm font-medium truncate">
               {post.title}
             </p>
-            <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center justify-between mt-1.5">
               <StatusBadge status={post.status} />
               {post.comments.length > 0 && (
-                <span className="text-white text-[10px]">
+                <span className="text-white text-xs">
                   💬 {post.comments.length}
                 </span>
               )}
@@ -116,19 +117,27 @@ export default function FeedPreview({
 
   return (
     <div>
-      <div className="text-center mb-6">
-        <div className="inline-block">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-16 h-16 rounded-full bg-ym-blue-2 flex items-center justify-center text-white font-bold text-lg">
-              Y
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-sm">youmee.pl</p>
-              <p className="text-xs text-ym-text-2">
-                Kubeczki dla dzieci | youmee.pl
-              </p>
+      {/* Instagram-style profile header */}
+      <div className="max-w-2xl mx-auto mb-6">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-20 h-20 rounded-full bg-ym-blue-2 flex items-center justify-center text-white font-bold text-2xl shrink-0">
+            Y
+          </div>
+          <div>
+            <p className="font-bold text-base">youmee.pl</p>
+            <p className="text-sm text-ym-text-2">
+              Kubeczki dla dzieci | youmee.pl
+            </p>
+            <div className="flex gap-4 mt-2 text-sm">
+              <span><strong>{sortedPosts.length}</strong> postów</span>
             </div>
           </div>
+        </div>
+
+        {/* Separator */}
+        <div className="border-t border-beige-3 mb-1" />
+        <div className="flex justify-center gap-8 py-2 text-xs text-ym-text-2 uppercase tracking-wider">
+          <span className="border-t-2 border-ym-text pt-2 text-ym-text font-semibold">Posty</span>
         </div>
       </div>
 
@@ -141,7 +150,7 @@ export default function FeedPreview({
           items={sortedPosts.map((p) => p.id)}
           strategy={rectSortingStrategy}
         >
-          <div className="grid grid-cols-3 gap-1 max-w-lg mx-auto">
+          <div className="grid grid-cols-3 gap-1 max-w-2xl mx-auto">
             {sortedPosts.map((post) => (
               <SortablePost
                 key={post.id}

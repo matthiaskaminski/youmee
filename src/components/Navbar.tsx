@@ -68,7 +68,7 @@ export default function Navbar({
                 {session?.user?.name}
               </p>
               <p className="text-xs text-ym-text-2">
-                {isAdmin ? "Administrator" : "Klient"}
+                {isAdmin ? "Admin" : "Widz"}
               </p>
             </div>
             <div className="relative">
@@ -86,7 +86,7 @@ export default function Navbar({
                   <div className="sm:hidden px-4 py-2 border-b border-beige-2">
                     <p className="text-sm font-medium">{session?.user?.name}</p>
                     <p className="text-xs text-ym-text-2">
-                      {isAdmin ? "Administrator" : "Klient"}
+                      {isAdmin ? "Admin" : "Widz"}
                     </p>
                   </div>
                   <div className="sm:hidden border-b border-beige-2 py-1">

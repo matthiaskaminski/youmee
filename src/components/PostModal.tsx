@@ -32,6 +32,7 @@ export default function PostModal({
   });
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const mediaItems = post.media && post.media.length > 0
@@ -368,15 +369,34 @@ export default function PostModal({
                     Edytuj
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm("Usunąć ten post?")) onDelete(post.id);
-                    }}
+                    onClick={() => setConfirmDelete(true)}
                     className="px-3 py-1.5 bg-ym-pink/50 text-ym-pink-2 rounded-lg text-sm hover:bg-ym-pink"
                   >
                     Usuń
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Delete confirmation */}
+          {confirmDelete && (
+            <div className="mb-4 p-4 bg-ym-pink/30 border border-ym-pink-2 rounded-xl">
+              <p className="text-sm font-medium text-ym-text mb-3">Usunąć ten post?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onDelete(post.id)}
+                  className="px-4 py-2 bg-ym-pink-3 text-beige rounded-lg text-sm font-medium hover:bg-ym-pink-4 transition"
+                >
+                  Tak, usuń
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-4 py-2 bg-beige-2 rounded-lg text-sm hover:bg-beige-3 transition"
+                >
+                  Anuluj
+                </button>
+              </div>
             </div>
           )}
 

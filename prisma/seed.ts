@@ -4,33 +4,33 @@ import { hashSync } from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create admin user
+  // Maciek - social media manager
+  await prisma.user.upsert({
+    where: { email: "maciek@youmee.pl" },
+    update: {},
+    create: {
+      name: "Maciek",
+      email: "maciek@youmee.pl",
+      password: hashSync("admin123", 10),
+      role: "admin",
+    },
+  });
+
+  // Właścicielka Youmee
   await prisma.user.upsert({
     where: { email: "admin@youmee.pl" },
     update: {},
     create: {
-      name: "Admin",
+      name: "Youmee",
       email: "admin@youmee.pl",
       password: hashSync("admin123", 10),
       role: "admin",
     },
   });
 
-  // Create client user
-  await prisma.user.upsert({
-    where: { email: "klient@youmee.pl" },
-    update: {},
-    create: {
-      name: "Klientka Youmee",
-      email: "klient@youmee.pl",
-      password: hashSync("klient123", 10),
-      role: "client",
-    },
-  });
-
   console.log("Seed completed!");
-  console.log("Admin: admin@youmee.pl / admin123");
-  console.log("Klient: klient@youmee.pl / klient123");
+  console.log("Maciek: maciek@youmee.pl / admin123");
+  console.log("Youmee: admin@youmee.pl / admin123");
 }
 
 main()

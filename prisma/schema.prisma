@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      String    @default("client") // "admin" or "client"
+  createdAt DateTime  @default(now())
+  comments  Comment[]
+}
+
+model Post {
+  id          String    @id @default(uuid())
+  title       String
+  description String    @default("")
+  hashtags    String    @default("")
+  imageUrl    String    @default("") // thumbnail / first image
+  status      String    @default("draft") // draft, review, approved, published
+  date        DateTime?
+  order       Int       @default(0)
+  platform    String    @default("instagram") // instagram, facebook, both
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  comments    Comment[]
+  media       Media[]
+}
+
+model Media {
+  id       String @id @default(uuid())
+  url      String
+  type     String @default("image") // "image" or "video"
+  order    Int    @default(0)
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}

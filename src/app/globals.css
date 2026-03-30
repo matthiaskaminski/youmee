@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  /* Base beige */
+  --color-beige: #F8F2EB;
+  --color-beige-2: #F1E8E0;
+  --color-beige-3: #E4DBD4;
+  --color-beige-4: #DDD0C4;
+
+  /* Blue palette (from brandbook extended) */
+  --color-ym-blue: #D6E3ED;
+  --color-ym-blue-2: #A9C1D3;
+  --color-ym-blue-3: #8BAABE;
+  --color-ym-blue-4: #6D93A9;
+  --color-ym-blue-5: #507C94;
+
+  /* Pink palette */
+  --color-ym-pink: #EDD6DB;
+  --color-ym-pink-2: #D3A9AB;
+  --color-ym-pink-3: #BF8A8E;
+  --color-ym-pink-4: #A96B71;
+
+  /* Green palette */
+  --color-ym-green: #BACCBA;
+  --color-ym-green-2: #8FA68F;
+  --color-ym-green-3: #6E8B6E;
+  --color-ym-green-4: #537053;
+
+  /* Grey / text palette */
+  --color-ym-text: #46484D;
+  --color-ym-text-2: #7B7F87;
+  --color-ym-text-3: #A0A3A9;
+  --color-ym-text-4: #C4C6CA;
+}
+
+body {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: var(--color-ym-text);
+  background-color: var(--color-beige);
+}

@@ -414,8 +414,8 @@ export default function PostModal({
 
               {/* Action buttons based on role */}
               <div className="flex gap-2 mt-4">
-                {/* Owner can approve */}
-                {isOwner && post.status === "review" && (
+                {/* Owner can approve (visible when not yet approved/published) */}
+                {isOwner && post.status !== "approved" && post.status !== "published" && (
                   <button
                     onClick={approvePost}
                     className="px-4 py-2 bg-ym-green-2 text-beige rounded-lg text-sm font-medium hover:bg-ym-green-3 transition"

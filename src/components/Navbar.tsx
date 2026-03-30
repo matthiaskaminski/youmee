@@ -104,7 +104,7 @@ export default function Navbar({
       <div className="sm:hidden">
         {/* Backdrop */}
         <div
-          className={`fixed inset-0 bg-black/30 z-[55] transition-opacity duration-300 ${
+          className={`fixed top-12 left-0 right-0 bottom-0 bg-black/30 z-[55] transition-opacity duration-300 ${
             menuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           }`}
           onClick={() => setMenuOpen(false)}

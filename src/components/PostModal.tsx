@@ -302,8 +302,14 @@ export default function PostModal({
                 onChange={(e) =>
                   setEditData({ ...editData, description: e.target.value })
                 }
+                onFocus={(e) => {
+                  e.target.style.minHeight = "160px";
+                }}
+                onBlur={(e) => {
+                  if (!e.target.value.trim()) e.target.style.minHeight = "80px";
+                }}
                 placeholder="Opis posta..."
-                className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm min-h-[80px] resize-none"
+                className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm min-h-[80px] resize-y transition-all duration-200"
               />
               <input
                 value={editData.hashtags}
@@ -313,7 +319,7 @@ export default function PostModal({
                 placeholder="#hashtagi"
                 className="w-full bg-beige-2 rounded-lg px-3 py-2 text-sm"
               />
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="text-xs text-ym-text-2">Data</label>
                   <input

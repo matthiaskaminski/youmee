@@ -1,36 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
-import { v4 as uuid } from "uuid";
 import { stripHtml, isValidStatus, isValidPlatform, isValidCategory } from "@/lib/validation";
 
 const CREATOR_EMAIL = "maciek@youmee.pl";
 const OWNER_EMAIL = "admin@youmee.pl";
-
-async function uploadFile(file: File): Promise<{ url: string; type: "image" | "video" }> {
-  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-  const filename = `${uuid()}.${ext}`;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-
-  const { error } = await supabase.storage
-    .from("media")
-    .upload(filename, bytes, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (error) throw new Error(`Upload failed: ${error.message}`);
-
-  const { data: urlData } = supabase.storage
-    .from("media")
-    .getPublicUrl(filename);
-
-  const videoExts = ["mp4", "mov", "webm", "avi"];
-  const type = videoExts.includes(ext) ? "video" : "image";
-
-  return { url: urlData.publicUrl, type };
-}
 
 export async function PUT(
   req: NextRequest,
@@ -44,72 +18,58 @@ export async function PUT(
   }
 
   const { id } = await params;
-  const formData = await req.formData();
+  const body = await req.json();
 
   const updateData: Record<string, unknown> = {};
 
-  // Owner (admin@youmee.pl) can only change description, hashtags, and status (to "approved" only)
+  // Owner can only change description, hashtags, and status (to "approved" only)
   if (email === OWNER_EMAIL) {
-    const description = formData.get("description") as string;
-    const hashtags = formData.get("hashtags") as string;
-    const status = formData.get("status") as string;
-
-    if (description !== null) updateData.description = stripHtml(description);
-    if (hashtags !== null) updateData.hashtags = stripHtml(hashtags);
-    if (status !== null) {
-      if (status !== "approved") {
+    if (body.description !== undefined) updateData.description = stripHtml(body.description);
+    if (body.hashtags !== undefined) updateData.hashtags = stripHtml(body.hashtags);
+    if (body.status !== undefined) {
+      if (body.status !== "approved") {
         return NextResponse.json(
           { error: "Mozesz ustawic status tylko na 'approved'" },
           { status: 403 }
         );
       }
-      updateData.status = status;
+      updateData.status = body.status;
     }
   } else {
-    // Creator (maciek@youmee.pl) can change everything
-    const title = formData.get("title") as string;
-    const description = formData.get("description") as string;
-    const hashtags = formData.get("hashtags") as string;
-    const status = formData.get("status") as string;
-    const date = formData.get("date") as string;
-    const platform = formData.get("platform") as string;
-    const category = formData.get("category") as string;
-
-    if (title !== null) updateData.title = stripHtml(title);
-    if (description !== null) updateData.description = stripHtml(description);
-    if (hashtags !== null) updateData.hashtags = stripHtml(hashtags);
-    if (status !== null) {
-      if (!isValidStatus(status)) {
+    // Creator can change everything
+    if (body.title !== undefined) updateData.title = stripHtml(body.title);
+    if (body.description !== undefined) updateData.description = stripHtml(body.description);
+    if (body.hashtags !== undefined) updateData.hashtags = stripHtml(body.hashtags);
+    if (body.status !== undefined) {
+      if (!isValidStatus(body.status)) {
         return NextResponse.json({ error: "Invalid status" }, { status: 400 });
       }
-      updateData.status = status;
+      updateData.status = body.status;
     }
-    if (platform !== null) {
-      if (!isValidPlatform(platform)) {
+    if (body.platform !== undefined) {
+      if (!isValidPlatform(body.platform)) {
         return NextResponse.json({ error: "Invalid platform" }, { status: 400 });
       }
-      updateData.platform = platform;
+      updateData.platform = body.platform;
     }
-    if (category !== null) {
-      if (!isValidCategory(category)) {
+    if (body.category !== undefined) {
+      if (!isValidCategory(body.category)) {
         return NextResponse.json({ error: "Invalid category" }, { status: 400 });
       }
-      updateData.category = category;
+      updateData.category = body.category;
     }
-    if (date) updateData.date = new Date(date);
+    if (body.date) updateData.date = new Date(body.date);
 
-    // Handle new files - only creator can upload
-    const files = formData.getAll("files") as File[];
-    const newFiles = files.filter((f) => f && f.size > 0);
-
-    if (newFiles.length > 0) {
+    // Handle new media (already uploaded to Supabase via signed URLs)
+    if (body.media && Array.isArray(body.media) && body.media.length > 0) {
       await prisma.media.deleteMany({ where: { postId: id } });
 
-      const mediaData = [];
-      for (let i = 0; i < newFiles.length; i++) {
-        const saved = await uploadFile(newFiles[i]);
-        mediaData.push({ ...saved, order: i, postId: id });
-      }
+      const mediaData = body.media.map((m: { url: string; type: string }, i: number) => ({
+        url: m.url,
+        type: m.type,
+        order: i,
+        postId: id,
+      }));
 
       await prisma.media.createMany({ data: mediaData });
       updateData.imageUrl = mediaData[0].url;

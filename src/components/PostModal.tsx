@@ -101,19 +101,40 @@ export default function PostModal({
 
   const saveEdit = async () => {
     setSaving(true);
-    const formData = new FormData();
-    formData.append("title", editData.title);
-    formData.append("description", editData.description);
-    formData.append("hashtags", editData.hashtags);
-    formData.append("status", editData.status);
-    formData.append("date", editData.date);
-    formData.append("platform", editData.platform);
-    formData.append("category", editData.category);
-    for (const file of newFiles) {
-      formData.append("files", file);
+
+    // Upload new files directly to Supabase if any
+    let uploadedMedia: { url: string; type: string }[] | undefined;
+    if (newFiles.length > 0) {
+      const signRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          files: newFiles.map((f) => ({ name: f.name, type: f.type })),
+        }),
+      });
+      const signedUrls = await signRes.json();
+      uploadedMedia = [];
+      for (let i = 0; i < newFiles.length; i++) {
+        await fetch(signedUrls[i].signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": newFiles[i].type },
+          body: newFiles[i],
+        });
+        uploadedMedia.push({
+          url: signedUrls[i].publicUrl,
+          type: signedUrls[i].type,
+        });
+      }
     }
 
-    await fetch(`/api/posts/${post.id}`, { method: "PUT", body: formData });
+    await fetch(`/api/posts/${post.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...editData,
+        media: uploadedMedia,
+      }),
+    });
     setSaving(false);
     setEditing(false);
     setNewFiles([]);

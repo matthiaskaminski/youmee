@@ -49,14 +49,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
-  const title = stripHtml(formData.get("title") as string);
-  const description = stripHtml(formData.get("description") as string);
-  const hashtags = stripHtml(formData.get("hashtags") as string);
-  const status = (formData.get("status") as string) || "draft";
-  const date = formData.get("date") as string;
-  const platform = (formData.get("platform") as string) || "instagram";
-  const category = (formData.get("category") as string) || "post";
+  const body = await req.json();
+  const title = stripHtml(body.title || "");
+  const description = stripHtml(body.description || "");
+  const hashtags = stripHtml(body.hashtags || "");
+  const status = body.status || "draft";
+  const date = body.date as string;
+  const platform = body.platform || "instagram";
+  const category = body.category || "post";
+  const uploadedMedia = (body.media || []) as { url: string; type: string }[];
 
   if (!isValidStatus(status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
@@ -68,35 +69,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid category" }, { status: 400 });
   }
 
-  // Handle multiple files
-  const files = formData.getAll("files") as File[];
-  const mediaData: { url: string; type: "image" | "video"; order: number }[] = [];
-  let thumbnailUrl = "";
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (file && file.size > 0) {
-      const saved = await uploadFile(file);
-      mediaData.push({ ...saved, order: i });
-      if (i === 0) thumbnailUrl = saved.url;
-    }
-  }
-
-  // Fallback: single image field
-  if (mediaData.length === 0) {
-    const singleImage = formData.get("image") as File | null;
-    if (singleImage && singleImage.size > 0) {
-      const saved = await uploadFile(singleImage);
-      mediaData.push({ ...saved, order: 0 });
-      thumbnailUrl = saved.url;
-    }
-  }
+  // Media already uploaded directly to Supabase via signed URLs
+  const mediaData = uploadedMedia.map((m, i) => ({
+    url: m.url,
+    type: m.type as "image" | "video",
+    order: i,
+  }));
+  const thumbnailUrl = mediaData.length > 0 ? mediaData[0].url : "";
 
   const post = await prisma.post.create({
     data: {
       title,
-      description: description || "",
-      hashtags: hashtags || "",
+      description,
+      hashtags,
       imageUrl: thumbnailUrl,
       status,
       date: date ? new Date(date) : null,

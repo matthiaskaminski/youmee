@@ -136,20 +136,47 @@ export default function CreatePostForm({
     if (!title.trim()) return;
     setSaving(true);
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("hashtags", hashtags);
-    formData.append("date", date);
-    formData.append("platform", platform);
-    formData.append("category", category);
-    formData.append("status", status);
-    // Files are already in the reordered order
-    for (const file of files) {
-      formData.append("files", file);
+    // Upload files directly to Supabase via signed URLs (bypasses Vercel 4.5MB limit)
+    let uploadedMedia: { url: string; type: string }[] = [];
+    if (files.length > 0) {
+      const signRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          files: files.map((f) => ({ name: f.name, type: f.type })),
+        }),
+      });
+      const signedUrls = await signRes.json();
+
+      // Upload each file directly to Supabase Storage
+      for (let i = 0; i < files.length; i++) {
+        await fetch(signedUrls[i].signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": files[i].type },
+          body: files[i],
+        });
+        uploadedMedia.push({
+          url: signedUrls[i].publicUrl,
+          type: signedUrls[i].type,
+        });
+      }
     }
 
-    await fetch("/api/posts", { method: "POST", body: formData });
+    // Send only metadata + uploaded URLs to API (no large files)
+    await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description,
+        hashtags,
+        date,
+        platform,
+        category,
+        status,
+        media: uploadedMedia,
+      }),
+    });
 
     // Reset
     setTitle("");

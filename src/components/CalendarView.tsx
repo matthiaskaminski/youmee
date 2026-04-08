@@ -140,12 +140,14 @@ export default function CalendarView({
   posts,
   onPostClick,
   isAdmin,
+  canDrag,
   onAddPost,
   onDateChange,
 }: {
   posts: Post[];
   onPostClick: (post: Post) => void;
   isAdmin?: boolean;
+  canDrag?: boolean;
   onAddPost?: (date: string) => void;
   onDateChange?: (postId: string, newDate: string) => void;
 }) {
@@ -500,7 +502,7 @@ export default function CalendarView({
                             post={post}
                             dayPosts={dayPosts}
                             onPostClick={onPostClick}
-                            isAdmin={isAdmin}
+                            isAdmin={canDrag}
                           />
                         ))}
                       </div>

@@ -155,6 +155,7 @@ export default function DashboardPage() {
             posts={posts}
             onPostClick={handlePostClick}
             isAdmin={isCreator}
+            canDrag={isAdmin}
             onAddPost={handleAddPostFromCalendar}
             onDateChange={handleDateChange}
           />

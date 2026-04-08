@@ -26,6 +26,7 @@ export async function PUT(
   if (email === OWNER_EMAIL) {
     if (body.description !== undefined) updateData.description = stripHtml(body.description);
     if (body.hashtags !== undefined) updateData.hashtags = stripHtml(body.hashtags);
+    if (body.date !== undefined) updateData.date = body.date ? new Date(body.date) : null;
     if (body.status !== undefined) {
       if (body.status !== "approved") {
         return NextResponse.json(

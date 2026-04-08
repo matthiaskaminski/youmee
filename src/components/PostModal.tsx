@@ -525,18 +525,24 @@ export default function PostModal({
                 <p className="text-sm text-ym-text-2">Brak komentarzy</p>
               )}
             </div>
-            <div className="flex gap-2">
-              <input
+            <div className="flex gap-2 items-end">
+              <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addComment()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    addComment();
+                  }
+                }}
                 placeholder="Dodaj komentarz..."
-                className="flex-1 bg-beige-2 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ym-blue-2"
+                rows={3}
+                className="flex-1 bg-beige-2 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ym-blue-2 resize-none"
               />
               <button
                 onClick={addComment}
                 disabled={sendingComment || !comment.trim()}
-                className="px-4 py-2 bg-ym-text text-beige rounded-lg text-sm font-medium hover:bg-ym-text-2 disabled:opacity-50"
+                className="px-4 py-2 bg-ym-text text-beige rounded-lg text-sm font-medium hover:bg-ym-text-2 disabled:opacity-50 shrink-0"
               >
                 Wyślij
               </button>

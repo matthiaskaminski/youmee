@@ -22,20 +22,15 @@ export async function PUT(
 
   const updateData: Record<string, unknown> = {};
 
-  // Owner can only change description, hashtags, and status (to "approved" only)
+  // Owner can only change description, hashtags, date, and status (to "approved" only)
   if (email === OWNER_EMAIL) {
     if (body.description !== undefined) updateData.description = stripHtml(body.description);
     if (body.hashtags !== undefined) updateData.hashtags = stripHtml(body.hashtags);
     if (body.date !== undefined) updateData.date = body.date ? new Date(body.date) : null;
-    if (body.status !== undefined) {
-      if (body.status !== "approved") {
-        return NextResponse.json(
-          { error: "Mozesz ustawic status tylko na 'approved'" },
-          { status: 403 }
-        );
-      }
+    if (body.status !== undefined && body.status === "approved") {
       updateData.status = body.status;
     }
+    // Other status values are silently ignored for owner (not rejected)
   } else {
     // Creator can change everything
     if (body.title !== undefined) updateData.title = stripHtml(body.title);

@@ -63,3 +63,24 @@ model Comment {
 
   @@schema("youmee")
 }
+
+model Opinion {
+  id        String   @id @default(uuid())
+  person    String
+  content   String
+  source    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@schema("youmee")
+}
+
+model Idea {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  category    String   @default("post") // post, story, reels
+  status      String   @default("new") // new, in-progress, done
+  createdAt   DateTime @default(now())
+
+  @@schema("youmee")
+}

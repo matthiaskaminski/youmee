@@ -7,11 +7,13 @@ import Navbar from "@/components/Navbar";
 import CalendarView from "@/components/CalendarView";
 import FeedPreview from "@/components/FeedPreview";
 import ListView from "@/components/ListView";
+import OpinionsView from "@/components/OpinionsView";
+import IdeasView from "@/components/IdeasView";
 import PostModal from "@/components/PostModal";
 import CreatePostForm from "@/components/CreatePostForm";
 import type { Post } from "@/types/post";
 
-type ViewType = "calendar" | "feed" | "list";
+type ViewType = "calendar" | "feed" | "list" | "opinions" | "ideas";
 
 export default function DashboardPage() {
   const { data: session, status: authStatus } = useSession();
@@ -189,6 +191,19 @@ export default function DashboardPage() {
             onDelete={handlePostDelete}
           />
         )}
+      </div>
+    );
+  }
+
+  // Opinions & Ideas: standalone views without post stats
+  if (view === "opinions" || view === "ideas") {
+    return (
+      <div className="min-h-screen bg-beige">
+        <Navbar view={view} onViewChange={setView} />
+        <main className="mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-[1600px]">
+          {view === "opinions" && <OpinionsView />}
+          {view === "ideas" && <IdeasView />}
+        </main>
       </div>
     );
   }

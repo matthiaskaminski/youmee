@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 
-type ViewType = "calendar" | "feed" | "list";
+type ViewType = "calendar" | "feed" | "list" | "opinions" | "ideas";
 
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -178,6 +178,27 @@ export default function Navbar({
               >
                 Lista
               </button>
+              <div className="w-px h-5 bg-beige-3 mx-1" />
+              <button
+                onClick={() => onViewChange("opinions")}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                  view === "opinions"
+                    ? "bg-ym-text text-beige"
+                    : "text-ym-text-2 hover:text-ym-text hover:bg-beige-3"
+                }`}
+              >
+                Opinie
+              </button>
+              <button
+                onClick={() => onViewChange("ideas")}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                  view === "ideas"
+                    ? "bg-ym-text text-beige"
+                    : "text-ym-text-2 hover:text-ym-text hover:bg-beige-3"
+                }`}
+              >
+                Pomysły
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -269,7 +290,7 @@ export default function Navbar({
               </div>
             </div>
 
-            {(["calendar", "feed", "list"] as ViewType[]).map((v) => (
+            {(["calendar", "feed", "list", "opinions", "ideas"] as ViewType[]).map((v) => (
               <button
                 key={v}
                 onClick={() => { onViewChange(v); setMenuOpen(false); }}
@@ -279,7 +300,7 @@ export default function Navbar({
                     : "text-ym-text-2 hover:bg-beige-2"
                 }`}
               >
-                {v === "calendar" ? "Kalendarz" : v === "feed" ? "Podgląd feedu" : "Lista"}
+                {v === "calendar" ? "Kalendarz" : v === "feed" ? "Podgląd feedu" : v === "list" ? "Lista" : v === "opinions" ? "Opinie" : "Pomysły"}
               </button>
             ))}
 
